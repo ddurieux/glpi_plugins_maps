@@ -296,8 +296,6 @@ $gg = array();
          });
       });
       </script>';
-      echo "<pre>";
-      print_r($gg);
    }
 }
 ?>
