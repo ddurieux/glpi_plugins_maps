@@ -122,11 +122,11 @@ class PluginMapsMap extends CommonDBTM {
          case 'Central' :
             Toolbox::logInFile("maps", "showMap\n");
             if (PluginMapsProfile::haveRight('logs','w')) Toolbox::logInFile("maps", "showMap\n");
-            
+
             if (! PluginMapsProfile::haveRight("centralpage", 'r')) {
                return '';
             }
-            
+
             PluginMapsMap::showMap();
             break;
 
@@ -174,7 +174,7 @@ class PluginMapsMap extends CommonDBTM {
       global $CFG_GLPI;
 
       if (PluginMapsProfile::haveRight('logs','w')) Toolbox::logInFile("maps", "showMap\n");
-      
+
       echo '<table class="tab_cadre_fixe">';
       echo '<tr class="tab_bg_1"><th colspan="3">';
       echo __("Map of the computers ...", 'maps');
@@ -196,29 +196,31 @@ class PluginMapsMap extends CommonDBTM {
       </tr>
       </table>';
 
-
-      echo '<script>
-         var hostsInfo = [';
-         
-      $query = "SELECT 
-               `glpi_computers`.*
-               , `glpi_computers`.`id` AS id_Host
+//      echo '<script>
+//         var hostsInfo = [';
+$gg = array();
+      $query = "SELECT
+               `glpi_networkequipments`.*
+               , `glpi_networkequipments`.`id` AS id_Host
                , `glpi_plugin_monitoring_hosts`.*
-               , filterQuery.`id` AS id_monitoring
                , `glpi_locations`.`id` AS id_Location, `glpi_locations`.`building` AS Location
                , `glpi_states`.`id` AS id_State, `glpi_states`.`completename` AS status
-               FROM `glpi_computers` 
-               LEFT JOIN `glpi_locations` ON `glpi_locations`.`id` = `glpi_computers`.`locations_id` 
-               LEFT JOIN `glpi_states` ON `glpi_states`.`id` = `glpi_computers`.`states_id` 
-               LEFT JOIN `glpi_plugin_monitoring_hosts` ON `glpi_plugin_monitoring_hosts`.`items_id` = `glpi_computers`.`id`
-               LEFT JOIN (SELECT * FROM `glpi_plugin_monitoring_componentscatalogs_hosts` GROUP BY `items_id`) filterQuery ON `glpi_computers`.`id` = filterQuery.`items_id` 
-               WHERE `glpi_computers`.`entities_id` IN (".$_SESSION['glpiactiveentities_string'].") 
+               FROM `glpi_networkequipments`
+               LEFT JOIN `glpi_locations` ON `glpi_locations`.`id` = `glpi_networkequipments`.`locations_id`
+               LEFT JOIN `glpi_states` ON `glpi_states`.`id` = `glpi_networkequipments`.`states_id`
+               LEFT JOIN `glpi_plugin_monitoring_hosts`
+                  ON `glpi_plugin_monitoring_hosts`.`items_id` = `glpi_networkequipments`.`id`
+                     AND `glpi_plugin_monitoring_hosts`.`itemtype` = 'NetworkEquipment'
+               WHERE `glpi_networkequipments`.`entities_id` IN (".$_SESSION['glpiactiveentities_string'].")
+                  AND `glpi_locations`.`building` IS NOT NULL
+               GROUP BY `glpi_networkequipments`.`id`
                ORDER BY `name`";
       // Toolbox::logInFile("maps", "Computer query : ".$query."\n");
       $result = $DB->query($query);
 
       $i=0;
-      while ($data=$DB->fetch_array($result)) {
+      while ($data=$DB->fetch_assoc($result)) {
+         $add = TRUE;
          // Default GPS coordinates ...
          $data['lat'] = 45.054485;
          $data['lng'] = 5.081413;
@@ -226,52 +228,65 @@ class PluginMapsMap extends CommonDBTM {
             $split = explode(',', $data['Location']);
             if (count($split) > 1) {
                // At least 2 elements, let us consider as GPS coordinates ...
-               $data['lat'] = $split[0];
-               $data['lng'] = $split[1];
+               $data['lat'] = trim($split[0]);
+               $data['lng'] = trim($split[1]);
             }
-         }
-         
          // Link to computer form ...
-         $data['link'] = $CFG_GLPI['root_doc']."/front/computer.form.php?id=".$data['id_Host'];
-         
+         $data['link'] = $CFG_GLPI['root_doc']."/front/networkequipment.form.php?id=".$data['id_Host'];
+
          // If computer is used in monitoring plugin ...
-         if (! empty($data['id_monitoring'])) {
+         $query3 = "SELECT * FROM `glpi_plugin_monitoring_componentscatalogs_hosts`
+                  WHERE `items_id`='".$data['id_Host']."'
+                     AND  `itemtype` = 'NetworkEquipment'";
+         $result3 = $DB->query($query3);
+         if ($DB->numrows($result3) > 0) {
             // Toolbox::logInFile("maps", "Computer monitoring id  : ".$data['id_monitoring']."\n");
             $data['monitoring'] = True;
-            
-            $query = "SELECT 
+
+            $query = "SELECT
                      `glpi_plugin_monitoring_services`.*
-                     FROM `glpi_plugin_monitoring_services` 
-                     WHERE `glpi_plugin_monitoring_services`.`plugin_monitoring_componentscatalogs_hosts_id` IN (SELECT id FROM `glpi_plugin_monitoring_componentscatalogs_hosts` WHERE `glpi_plugin_monitoring_componentscatalogs_hosts`.items_id ='".$data['id_Host']."') 
+                     FROM `glpi_plugin_monitoring_services`
+                     WHERE `glpi_plugin_monitoring_services`.`plugin_monitoring_componentscatalogs_hosts_id`
+					 IN (SELECT id FROM `glpi_plugin_monitoring_componentscatalogs_hosts`
+					 WHERE `glpi_plugin_monitoring_componentscatalogs_hosts`.items_id ='".$data['id_Host']."'
+					 AND `glpi_plugin_monitoring_componentscatalogs_hosts`.itemtype = 'NetworkEquipment' )
                      ORDER BY `name`";
-                     
+
            // Toolbox::logInFile("maps", "Services query : ".$query."\n");
             $result2 = $DB->query($query);
-            
+
             $data['services'] = Array();
             $j=0;
-            while ($data2=$DB->fetch_array($result2)) {
+            while ($data2=$DB->fetch_assoc($result2)) {
                // Toolbox::logInFile("maps", "Service data : ".json_encode($data2)."\n");
                $data['services'][$j++] = $data2;
             }
          } else {
             $data['monitoring'] = False;
+               $add = FALSE;
          }
-         
-         // Toolbox::logInFile("maps", "Computer data : ".json_encode($data)."\n");
 
-         if ($i++ != 0) echo ',';
-         
-         echo json_encode($data);
+         // Toolbox::logInFile("maps", "Computer data : ".json_encode($data)."\n");
+         if ($add) {
+            $i++;
+            if ($i > 1) echo ',';
+            $gg[] = $data;
+//               echo json_encode($data);
+            }
+         }
       }
 
-      echo '
-      ];';
-      
+//      echo '
+//      ];';
+
+      echo '<script>
+         var hostsInfo = '.json_encode($gg) .';';
+
       echo '
       Ext.onReady(function(){
          // Overloading global variables defined in the maps.js script ...
-         debugJs=true; 
+         debugJs=true;
+//		debugJs=false;
          imagesDir = "' . $CFG_GLPI['root_doc']."/plugins/maps/pics" . '";
          scriptsDir = "' . $CFG_GLPI['root_doc']."/plugins/maps/javascript" . '";
 
@@ -281,6 +296,8 @@ class PluginMapsMap extends CommonDBTM {
          });
       });
       </script>';
+      echo "<pre>";
+      print_r($gg);
    }
 }
 ?>

@@ -83,9 +83,11 @@ markerCreate = function(point, name, state, content, iconBase) {
 	*/
 		// Marker with label ...
 		var marker = new MarkerWithLabel({
-			map: map, position: point,
+			map: map, 
+         position: point,
 			icon: image, 
-			raiseOnDrag: false, draggable: true,
+			raiseOnDrag: false, 
+         draggable: true,
 			title: name,
 			hoststate: state,
 			hostname: name,
@@ -154,8 +156,8 @@ mapInit = function() {
 					var hostGlobalState = -1;
 					var gpsLocation = new google.maps.LatLng(host.lat, host.lng);
 					var iconBase='host';
-					// if (debugJs) console.log('host '+host.name+' is '+hostState+', located here : '+gpsLocation);
-					if (hostState != 'UP') console.error('host '+host.name+' is '+hostState+', located here : '+gpsLocation);
+//					 if (debugJs) console.log('host '+host.name+' is '+hostState+', located here : '+gpsLocation);
+//					if (hostState != 'UP') console.error('host '+host.name+' is '+hostState+', located here : '+gpsLocation);
 
 					if (host.monitoring && host.monitoring == true) {
 						iconBase='host-monitored';
@@ -183,8 +185,8 @@ mapInit = function() {
 							for (var idxServices = 0; idxServices < host.services.length; ++idxServices) {
 								var service = host.services[idxServices];
 								var serviceState = service.state.toUpperCase();
-								// if (debugJs) console.log(' - service '+service.name+' is '+serviceState);
-								if (serviceState != 'OK') console.error(' - service '+service.name+' is '+serviceState);
+//								 if (debugJs) console.log(' - service '+service.name+' is '+serviceState);
+//								if (serviceState != 'OK') console.error(' - service '+service.name+' is '+serviceState);
 								infoViewContent += '<li><span class="map-service map-service-'+serviceState+'">&nbsp;</span>'+service.name+' is '+serviceState+'.</li>';
 								
 								switch(serviceState) {
@@ -211,7 +213,7 @@ mapInit = function() {
 							'</span>'+
 							'</div>';
 					}
-					
+   
 					// Create a marker ...
 					var markerState = "UNKNOWN";
 					switch(hostGlobalState) {
@@ -266,6 +268,7 @@ mapInit = function() {
 						return {text: markers.length, index: clusterIndex};
 					}
 				};
+            
 				var markerCluster = new MarkerClusterer(map, allMarkers, mcOptions);
 
 				var usualColor = 'eebb22';
@@ -280,7 +283,7 @@ mapInit = function() {
 					new google.maps.Point(10, 34)  // anchor - where to meet map location
 				);
 				var oms = new OverlappingMarkerSpiderfier(map, {markersWontMove: true, markersWontHide: true});
-				console.log(oms);
+//				console.log(oms);
 				oms.addListener('click', function(marker) {
 					if (debugJs) console.log('click ...');
 					infoWindow.setContent(marker.iw_content);

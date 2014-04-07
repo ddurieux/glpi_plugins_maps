@@ -39,7 +39,7 @@ if ($_SESSION["glpiactiveprofile"]["interface"] == "central") {
 } else {
    Html::helpHeader(__('Computers map', 'maps'), $_SERVER['PHP_SELF']);
 }
-
+echo '<meta http-equiv="refresh" content="300">';
 PluginMapsProfile::checkRight('mainpage','r');
 PluginMapsMap::showMap();
 
